@@ -56,25 +56,32 @@ module Core =
         | CreateOptionsError of NonEmptyNoDuplicateList.CreateError
         | PromptUserActionError of UserActionError
 
+    let options =
+        [
+            { shortcut = 'a'; name = "Option a"; outcome = Ok Confirmed };
+            { shortcut = 'b'; name = "Option b"; outcome = Ok ConfirmedAndVerify };
+            { shortcut = 'c'; name = "Option c"; outcome = Error Refuted };
+        ]
+
+    let createOptions options =
+        NonEmptyNoDuplicateList.create options
+
+    let handleOutcome outcome =
+        match outcome with
+        | Confirmed ->
+            printfn "Confirmed"
+            Ok ()
+        | ConfirmedAndVerify ->
+            printfn "Verifying ..."
+            biggerThan 2 4
+
     let workflow _ =
         result {
             do! biggerThan 5 10 |> Result.mapError BiggerThanError
-            let! options =
-                NonEmptyNoDuplicateList.create [
-                    { shortcut = 'a'; name = "Option a"; outcome = Ok Confirmed };
-                    { shortcut = 'b'; name = "Option b"; outcome = Ok ConfirmedAndVerify };
-                    { shortcut = 'c'; name = "Option c"; outcome = Error Refuted };
-                ] |> Result.mapError CreateOptionsError
+            let! options = createOptions options |> Result.mapError CreateOptionsError
             let! outcome = promptUserAction options |> Result.mapError PromptUserActionError
-            do!
-                match outcome with
-                | Confirmed ->
-                    printfn "Confirmed"
-                    Ok ()
-                | ConfirmedAndVerify ->
-                    printfn "Verifying ..."
-                    biggerThan 2 4 |> Result.mapError BiggerThanError
-            return ()            
+            do! handleOutcome outcome |> Result.mapError BiggerThanError
+            return ()
         }
 
     [<EntryPoint>]
